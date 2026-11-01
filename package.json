@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "seed": "node seed.js",
+    "seed:reset": "node seed.js --reset",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
