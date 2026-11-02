@@ -1,37 +1,35 @@
-import { timingSafeEqual } from "node:crypto";
+import { jwtVerify } from "jose";
 
-function safeEqual(a, b) {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-
-function decode(value) {
-  try {
-    return decodeURIComponent(value ?? "");
-  } catch {
-    return "";
-  }
-}
+const encoder = new TextEncoder();
 
 /**
- * Guards every mutation. The Next.js app verifies the BetterAuth session
- * cookie, then calls this API with a shared secret and the verified user.
- * Anything without the secret gets a 401.
+ * Guards every mutation. The Next.js app forwards the user's HTTPOnly-cookie
+ * JWT as "Authorization: Bearer <token>". It is verified here independently
+ * (signature, issuer, expiry); anything else gets a 401.
  */
-export function requireUser(req, res, next) {
-  const expected = process.env.INTERNAL_API_KEY;
-  const key = req.get("x-internal-key");
-  const email = req.get("x-user-email");
+export async function requireUser(req, res, next) {
+  const secret = process.env.JWT_SECRET;
+  const header = req.get("authorization") ?? "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
 
-  if (!expected || !key || !email || !safeEqual(key, expected)) {
+  if (!secret || !token) {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  req.user = {
-    email,
-    name: decode(req.get("x-user-name")),
-    image: decode(req.get("x-user-image")) || undefined,
-  };
-  next();
+  try {
+    const { payload } = await jwtVerify(token, encoder.encode(secret), {
+      algorithms: ["HS256"],
+      issuer: "studiospace",
+    });
+    if (!payload.sub) throw new Error("Token has no subject");
+
+    req.user = {
+      email: payload.sub,
+      name: typeof payload.name === "string" ? payload.name : "",
+      image: typeof payload.image === "string" ? payload.image : undefined,
+    };
+    next();
+  } catch {
+    res.status(401).json({ message: "Unauthorized" });
+  }
 }
