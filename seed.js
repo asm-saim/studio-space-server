@@ -1,5 +1,6 @@
 // Inserts demo studios. Run: npm run seed   (add --reset to wipe the studios collection first)
-// Images are picsum.photos placeholders: replace them with real ones later.
+// Images are hotlinked from the Pexels CDN (see px()). Keep them https:// — the
+// studio edit form rejects non-https image URLs.
 import { MongoClient } from "mongodb";
 import "dotenv/config";
 
@@ -46,13 +47,38 @@ const REVIEW_POOL = [
 const rows = [
   ["Northlight Photo Loft", "photo-studios", 45, [5, 5, 4], "Brooklyn, NY"],
   ["Cyclorama One", "photo-studios", 60, [5, 4], "Austin, TX"],
+  ["Sunroom Photo Studio", "photo-studios", 50, [5, 5, 4], "San Francisco, CA"],
   ["Harbor Sound Stage", "sound-stages", 120, [5, 5], "Los Angeles, CA"],
   ["Backlot Stage B", "sound-stages", 150, [4, 5], "Atlanta, GA"],
+  ["Stage 12 Production Hall", "sound-stages", 140, [5, 4, 5], "Albuquerque, NM"],
   ["The Quiet Booth", "podcast-rooms", 35, [5, 5, 5], "Chicago, IL"],
   ["Two Mic Studio", "podcast-rooms", 28, [4, 5], "Seattle, WA"],
   ["Vinyl Room Suite", "music-suites", 55, [5, 4, 5], "Nashville, TN"],
+  ["Harmony Recording Suite", "music-suites", 65, [5, 5, 4], "Memphis, TN"],
   ["Clay & Canvas Workshop", "art-workshops", 30, [4, 4], "Portland, OR"],
+  ["Makers Loft Workshop", "art-workshops", 35, [5, 4], "Asheville, NC"],
 ];
+
+/** Pexels CDN URL for a photo id, cropped to the 1200x800 (3:2) used everywhere. */
+const px = (id) =>
+  `https://images.pexels.com/photos/${id}/pexels-photo-${id}.jpeg?auto=compress&cs=tinysrgb&w=1200&h=800&fit=crop`;
+
+// Cover + gallery photo ids per studio slug. Every id was checked to return 200
+// and to visually match the listing's category and blurb.
+const IMAGES = {
+  "northlight-photo-loft": [4268512, 6045296, 40137089],
+  "cyclorama-one": [39232446, 6989087, 12616007],
+  "sunroom-photo-studio": [16008692, 16495457, 30173137],
+  "harbor-sound-stage": [8089249, 8089662, 19102538],
+  "backlot-stage-b": [31329890, 8089653, 34007217],
+  "stage-12-production-hall": [38059004, 38492070, 7709691],
+  "the-quiet-booth": [38578266, 37355068, 37033739],
+  "two-mic-studio": [38493054, 27357324, 37033702],
+  "vinyl-room-suite": [7586136, 14828524, 34516678],
+  "harmony-recording-suite": [8132964, 19452351, 18466433],
+  "clay-canvas-workshop": [34059831, 40471871, 30225310],
+  "makers-loft-workshop": [5682330, 34059836, 37042751],
+};
 
 const studios = rows.map(([title, category, hourlyRate, ratings, location], i) => {
   const c = BY_CATEGORY[category];
@@ -60,7 +86,7 @@ const studios = rows.map(([title, category, hourlyRate, ratings, location], i) =
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "");
-  const images = [1, 2, 3].map((n) => `https://picsum.photos/seed/${slug}-${n}/1200/800`);
+  const images = IMAGES[slug].map(px);
   const reviews = ratings.map((rating, n) => {
     const [author, comment] = REVIEW_POOL[(i + n) % REVIEW_POOL.length];
     return { author, rating, comment, createdAt: new Date(Date.now() - (n + 1) * 9 * 86_400_000) };
