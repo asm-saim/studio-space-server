@@ -13,13 +13,23 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Make sure the database is connected before any data route runs.
+async function ensureDb(req, res, next) {
+  try {
+    await connectToMongoDB();
+    next();
+  } catch {
+    res.status(503).json({ message: "The database is unavailable. Please try again shortly." });
+  }
+}
+
 //1st api:
 app.get("/", (req, res) => {
   res.send("Hello from server");
 });
 
-app.use("/studios", studiosRouter);
-app.use("/bookings", bookingsRouter);
+app.use("/studios", ensureDb, studiosRouter);
+app.use("/bookings", ensureDb, bookingsRouter);
 
 app.use((req, res) => {
   res.status(404).json({ message: "Not found" });
@@ -31,7 +41,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ message: "Something went wrong" });
 });
 
-connectToMongoDB();
+// Warm up at startup (a failure is already logged and the next request retries).
+connectToMongoDB().catch(() => {});
 
 //create server (locally only: on Vercel the exported app below is the entry point):
 if (!process.env.VERCEL) {
