@@ -33,7 +33,11 @@ app.use((err, req, res, next) => {
 
 connectToMongoDB();
 
-//create server:
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+//create server (locally only: on Vercel the exported app below is the entry point):
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+  });
+}
+
+export default app;
